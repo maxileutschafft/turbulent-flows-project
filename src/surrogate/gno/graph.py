@@ -11,14 +11,6 @@ import torch
 from scipy.spatial import cKDTree
 
 
-def select_device() -> torch.device:
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
-
-
 def build_edge_index(pos: torch.Tensor, k: int) -> torch.Tensor:
     """Build bidirectional k-NN edge_index from 2D positions using CPU cKDTree."""
     pos_np = pos.detach().cpu().numpy()

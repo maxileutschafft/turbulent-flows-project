@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from surrogate.gno.graph import build_graph, select_device
+from surrogate.gno.graph import build_graph
 from surrogate.gno.model import KernelNN
 from surrogate.gno.schema import (
     GNO_TARGET_COLS,
@@ -17,6 +17,14 @@ from surrogate.gno.schema import (
     npz_pos,
 )
 from surrogate.gno.utils import UnitGaussianNormalizer
+
+
+def select_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 
 def _load_normalizer(stats: dict) -> UnitGaussianNormalizer:
@@ -128,7 +136,7 @@ def infer(
     del model, x_dev, edge_index, edge_attr, pred_enc
     if y_norm is not None:
         del pred_log
-    if device.type == "cuda":
+    if torch.device(device).type == "cuda":
         torch.cuda.empty_cache()
 
     result = {
