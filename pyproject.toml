@@ -1,0 +1,55 @@
+[project]
+name = "turbulent-flows-project"
+version = "0.1.0"
+description = "Inference-only GNO surrogate for NACA 4-digit airfoils."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "h5py>=3.10",
+    "huggingface-hub>=0.24.0",
+    "ipykernel>=6.29.0",
+    "jupyter>=1.0.0",
+    "matplotlib>=3.8.0",
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+    "torch>=2.0.0",
+    "torch-geometric>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/surrogate",
+    "src/utils",
+]
+
+[tool.uv]
+package = true
+
+# PyTorch is pinned to the CUDA 12.8 index so the wheels are compatible with
+# the local driver (CUDA 12.4 / r550). CUDA minor-version compatibility lets
+# cu128 wheels run on a 12.4 driver; the PyTorch cu12x family requires
+# driver >= 525 (Linux), which r550 satisfies.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+[tool.ruff]
+line-length = 100
+src = ["src", "scripts"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

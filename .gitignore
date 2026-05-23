@@ -1,0 +1,39 @@
+# Training, input and output data
+data/
+output/
+outputs/
+logs/
+*.ckpt
+*.pth
+
+
+# Claude and Codex related files
+.claude
+AGENTS.md
+CLAUDE.md
+tasks/
+
+# Logging
+wandb/
+mlruns/
+
+# Environment files
+.env
+.env.*
+!.env.example
+.venv/
+
+# Dataset
+*.npz
+*.h5
+
+# Other stuff
+.DS_Store
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hydra/
+*.egg-info/
