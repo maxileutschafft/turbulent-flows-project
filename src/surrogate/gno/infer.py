@@ -19,21 +19,30 @@ from surrogate.gno.schema import (
 from surrogate.gno.utils import UnitGaussianNormalizer
 
 
+def _mps_available() -> bool:
+    return getattr(torch.backends, "mps", None) is not None and torch.backends.mps.is_available()
+
+
 def select_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
-    if torch.backends.mps.is_available():
+    if _mps_available():
         return torch.device("mps")
     return torch.device("cpu")
 
 
-def _load_normalizer(stats: dict) -> UnitGaussianNormalizer:
-    """Reconstruct a UnitGaussianNormalizer from saved mean/std tensors."""
-    norm = UnitGaussianNormalizer.__new__(UnitGaussianNormalizer)
-    norm.mean = stats["mean"]
-    norm.std = stats["std"]
-    norm.eps = 1e-5
-    return norm
+def available_devices() -> list[str]:
+    """Return the subset of ["cuda","mps","cpu"] usable on this machine.
+
+    Order: cuda first, then mps, then cpu (cpu always present).
+    """
+    devices: list[str] = []
+    if torch.cuda.is_available():
+        devices.append("cuda")
+    if _mps_available():
+        devices.append("mps")
+    devices.append("cpu")
+    return devices
 
 
 def infer(
@@ -101,7 +110,7 @@ def infer(
 
     # --- target normalizer (inputs are normalized inside the model) ---
     if "y_norm" in ckpt:
-        y_norm = _load_normalizer(ckpt["y_norm"])
+        y_norm = UnitGaussianNormalizer.from_stats(ckpt["y_norm"])
     else:
         print("Warning: checkpoint has no y_norm — recomputing from input data.")
         y_norm = UnitGaussianNormalizer(target) if target is not None else None

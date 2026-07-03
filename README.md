@@ -1,6 +1,6 @@
 # Turbulent Flows Term Project
 
-Inference-only repository for a Graph Neural Operator (GNO) surrogate that predicts steady-state RANS solutions (`u, v, p, k, ω, νᵗ`) over NACA 4-digit airfoil meshes. The model is a `KernelNN` graph network trained externally; this repo packages the forward pass, the analytical mesh / signed-distance generator needed to feed it, and two Jupyter notebooks that exercise both pre-computed and user-defined scenarios.
+Inference-only repository for three surrogate models — a Graph Neural Operator (GNO), Transolver, and DoMINO — that predict steady-state RANS solutions (`u, v, p, k, ω, νᵗ`) over NACA 4-digit airfoil meshes. Each model is trained externally; this repo packages the forward passes, the analytical mesh / signed-distance generator needed to feed them, two Jupyter notebooks that exercise both pre-computed and user-defined scenarios, and a small local web app for interactively exploring predictions.
 
 
 ## Getting Started
@@ -55,11 +55,13 @@ CUDA minor-version compatibility lets `cu128` wheels run on any driver `>= 525` 
 
 ## Required Data Assets
 
-### Model Checkpoint
-The model checkpoint is included in git and should be in:
+### Model Checkpoints
+Checkpoints for all three surrogates are included in git and should be in:
 
 ```text
 checkpoints/gno_w32_d6_k16_lr0.001_NACA_4_Digit_for_ML/best.pt
+checkpoints/transolver_h208_l4_s32_lr0.001_NACA_4_Digit_for_ML/best.pt
+checkpoints/domino_bl496_bf18_m4_k16_g64_surf256_lr0.001_NACA_4_Digit_for_ML/best.pt
 ```
 
 ### Scenario dataset
@@ -121,6 +123,28 @@ The three user knobs are set in the configuration cell:
 
 The device (`cuda` / `mps` / `cpu`) is auto-selected. Set the optional `save_mesh_to` argument to write the generated structured mesh to `output/custom_mesh.h5` for downstream inspection.
 
+## Usage — Web App
+
+A small local web app renders the airfoil geometry and lets you sweep NACA code, Reynolds number, and angle of attack across all three surrogates, with live streamline / scalar-field visualizations. The inference device is chosen once at startup (auto-selects `cuda` > `mps` > `cpu`, or force one with `--device`) — there is no in-UI device switch.
+
+```bash
+./app.sh                    # start → http://127.0.0.1:8001, auto device
+./app.sh --device cpu       # start, forcing a specific inference device
+./app.sh --public           # start + a temporary public HTTPS URL via a Cloudflare Quick Tunnel
+                             # (requires `cloudflared`; no login, share the URL only with people you trust)
+./app.sh --kill             # stop the app (and tunnel, if any)
+```
+
+or run it directly:
+
+```bash
+PYTHONPATH=src:src/app uv run python src/app/app.py --host 127.0.0.1 --port 8001
+```
+
+Open `http://127.0.0.1:8001` in a browser. Pick a NACA code, Reynolds number, angle of attack, and surrogate model (GNO / Transolver / DoMINO), then click "Generate prediction". The "View" dropdown switches between streamlines and the six scalar fields (`u`, `v`, `p`, `k`, `ω`, `νᵗ`, plus `|v|`).
+
+"Export .STEP" (bottom right) downloads the current NACA airfoil as a solid CAD file (`src/utils/step_export.py`) — a short spanwise extrusion (10% chord) of the 2D profile, in its natural angle-of-attack-free frame (angle of attack is a flow condition, not part of the geometry), written as an AP214 STEP file via the OpenCASCADE Python bindings (`cadquery-ocp-novtk`).
+
 ## Mesh and SDF Generation
 
 `src/utils/scenario.py::build_scenario(naca_code, reynolds, angle_of_attack)` produces an in-memory scenario dict with the same column layout as the dataset `.npz` files. Under the hood:
@@ -137,29 +161,46 @@ turbulent-flows-project/
 ├── pyproject.toml                       project metadata and dependency declarations
 ├── uv.lock                              locked dependency resolution
 ├── README.md
+├── app.sh                               start/stop the web app
 ├── inference_ground_truth.ipynb         notebook: inference on a dataset .npz
 ├── inference_custom_scenario.ipynb      notebook: inference on a user-defined NACA / Re / AoA
 ├── git-conventions.md                   guidelines how to work with git
-├── checkpoints/                         trained models
-│   └── gno_w32_d6_k16_lr0.001_NACA_4_Digit_for_ML/best.pt
+├── checkpoints/                         trained models (GNO, Transolver, DoMINO)
+│   ├── gno_w32_d6_k16_lr0.001_NACA_4_Digit_for_ML/best.pt
+│   ├── transolver_h208_l4_s32_lr0.001_NACA_4_Digit_for_ML/best.pt
+│   └── domino_bl496_bf18_m4_k16_g64_surf256_lr0.001_NACA_4_Digit_for_ML/best.pt
 ├── data/                                scenarios (gitignored)
 │   └── ...
 ├── output/                              notebook outputs (gitignored)
 ├── scripts/
 │   └── download_dataset.py              Hugging Face dataset snapshot
 └── src/
-    ├── surrogate/gno/                   GNO model + inference path
-    │   ├── model.py                     KernelNN graph network
-    │   ├── layers.py                    NNConvLayer
-    │   ├── utils.py                     DenseNet, UnitGaussianNormalizer
-    │   ├── schema.py                    column orders and .npz helpers
-    │   ├── graph.py                     k-NN edge_index, device selection
-    │   └── infer.py                     public infer() entry point
+    ├── app/                             local web app (Design view only)
+    │   ├── app.py                       FastAPI server (geometry / predict / devices)
+    │   ├── inference.py                 multi-model load/predict + SVG field rendering
+    │   ├── app.html                     single-page UI
+    │   └── static/                      main.js, core.js, state.js, geometry.js, app.css
+    ├── surrogate/
+    │   ├── gno/                         GNO model + inference path
+    │   │   ├── model.py                 KernelNN graph network
+    │   │   ├── layers.py                NNConvLayer
+    │   │   ├── utils.py                 DenseNet, UnitGaussianNormalizer
+    │   │   ├── schema.py                column orders and .npz helpers
+    │   │   ├── graph.py                 k-NN edge_index, device selection
+    │   │   └── infer.py                 public infer() entry point
+    │   ├── transolver/                  Transolver model + inference path
+    │   │   ├── model.py
+    │   │   └── infer.py
+    │   └── domino/                      DoMINO model + inference path
+    │       ├── model.py
+    │       ├── datapipe.py              build_aux() — k-NN + rasterized SDF grid
+    │       └── infer.py
     └── utils/
         ├── naca_geometry.py             analytical NACA-4 surface (open trailing edge)
         ├── mesh.py                      structured C-mesh node generator (numpy + scipy)
         ├── sdf.py                       Newton-refined analytical signed distance
         ├── scenario.py                  build_scenario(naca, Re, AoA) → in-memory scenario dict
+        ├── step_export.py               NACA profile → solid STEP CAD file (OpenCASCADE)
         └── inference/                   plotting + .npz prediction export
             ├── fields.py
             ├── error_maps.py

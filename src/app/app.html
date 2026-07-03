@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Airfoil Surrogate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app" data-mode="design" id="app">
+
+  <!-- ===================== DESIGN VIEW ===================== -->
+  <main class="view">
+    <aside class="inspector design">
+      <div class="scroll">
+        <div class="section">
+          <div class="sec-label">Geometry</div>
+          <div class="input-group">
+            <div class="input-prefix">NACA</div>
+            <input class="input big" id="nacaInput" value="2210" maxlength="5" spellcheck="false">
+          </div>
+        </div>
+        <div class="section">
+          <div class="sec-label">Flow conditions</div>
+          <div>
+            <div class="field-label" style="margin-bottom:7px;">Reynolds number</div>
+            <div class="input-group">
+              <div class="input-prefix">Re</div>
+              <input class="input" id="reInput" value="2.1 × 10⁵" spellcheck="false">
+            </div>
+          </div>
+          <div>
+            <div class="row-between"><span class="field-label">Angle of attack</span><span class="val" id="aoaVal">5.0°</span></div>
+            <input type="range" class="slider" id="aoa" min="-10" max="20" step="0.5" value="5">
+            <div class="slider-ends"><span>−10°</span><span>+20°</span></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="sec-label">Surrogate model</div>
+          <div class="dropdown" id="modelDD">
+            <button class="dd-btn"><span class="dd-label">GNO</span><span class="dd-caret"></span></button>
+            <div class="dd-menu">
+              <div class="dd-item sel" data-value="GNO">GNO</div>
+              <div class="dd-item" data-value="DoMINO">DoMINO</div>
+              <div class="dd-item" data-value="Transolver">Transolver</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn-primary" id="genBtn"><span class="tri"></span>Generate prediction</button>
+      </div>
+    </aside>
+
+    <section class="canvas-area field" id="designCanvas">
+      <div class="viz-holder" id="designHolder"></div>
+
+      <div class="dropdown viz-dd" id="vizDD">
+        <button class="dd-btn"><span class="pre">View</span><span class="dd-label">Streamlines</span><span class="dd-caret"></span></button>
+        <div class="dd-menu">
+          <div class="dd-item sel" data-value="streamlines">Streamlines</div>
+          <div class="dd-item" data-value="vel_mag">Velocity magnitude</div>
+          <div class="dd-item" data-value="u">Velocity x</div>
+          <div class="dd-item" data-value="v">Velocity y</div>
+          <div class="dd-item" data-value="p">Pressure</div>
+          <div class="dd-item" data-value="k">Turbulent kinetic energy</div>
+          <div class="dd-item" data-value="omega">Specific dissipation rate</div>
+          <div class="dd-item" data-value="nut">Turbulent viscosity</div>
+        </div>
+      </div>
+
+      <div class="colorbar" id="designCB">
+        <div class="cb-ticks" id="cbTicks"><span>1.8</span><span>1.2</span><span>0.6</span><span>0.0</span></div>
+        <div class="cb-bar"></div>
+        <div class="cb-title" id="cbTitle">U / U∞</div>
+      </div>
+
+      <div class="zoom">
+        <button data-z="-1">−</button>
+        <span class="zval" id="zval">100%</span>
+        <button data-z="1">+</button>
+        <span class="sep"></span>
+        <button class="fit" data-z="0">Fit</button>
+      </div>
+
+      <button class="export-btn" id="exportStepBtn">Export .STEP</button>
+
+      <div class="predict-overlay"></div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="/static/main.js"></script>
+</body>
+</html>
