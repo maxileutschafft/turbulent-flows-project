@@ -12,18 +12,6 @@
 <body>
 <div class="app" data-mode="design" id="app">
 
-  <!-- ===================== APP BAR ===================== -->
-  <header class="appbar">
-    <div class="left"></div>
-    <div class="center"></div>
-    <div class="right">
-      <div class="dropdown" id="deviceDD" style="width:auto;">
-        <button class="dd-btn" style="padding:7px 12px;"><span class="pre">Device</span><span class="dd-label">CPU</span><span class="dd-caret"></span></button>
-        <div class="dd-menu" style="left:auto;right:0;min-width:130px;"></div>
-      </div>
-    </div>
-  </header>
-
   <!-- ===================== DESIGN VIEW ===================== -->
   <main class="view">
     <aside class="inspector design">
@@ -97,6 +85,8 @@
         <span class="sep"></span>
         <button class="fit" data-z="0">Fit</button>
       </div>
+
+      <button class="export-btn" id="exportStepBtn">Export .STEP</button>
 
       <div class="predict-overlay"></div>
     </section>

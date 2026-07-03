@@ -27,36 +27,12 @@ el.nacaInput.addEventListener('input', function(){
 });
 el.reInput.addEventListener('input', function(){ core.clearPrediction(); });
 el.genBtn.addEventListener('click', core.generatePrediction);
+el.exportStepBtn.addEventListener('click', core.exportStep);
 
 /* ---------- zoom ---------- */
 document.querySelectorAll('.zoom button').forEach(function(b){
   b.addEventListener('click', function(){ core.stepZoom(parseInt(b.dataset.z, 10)); });
 });
-
-/* ---------- device dropdown ---------- */
-(function fetchDevices(){
-  fetch('/api/devices')
-    .then(function(r){ if(!r.ok) throw new Error('http ' + r.status); return r.json(); })
-    .then(function(d){
-      const menu = document.querySelector('#deviceDD .dd-menu');
-      const label = document.querySelector('#deviceDD .dd-label');
-      const saved = load('device');
-      const preferred = (saved && d.available.indexOf(saved)!==-1) ? saved : d.default;
-      d.available.forEach(function(dev){
-        const lbl = (d.labels&&d.labels[dev]) ? d.labels[dev] : dev.charAt(0).toUpperCase()+dev.slice(1);
-        const item = document.createElement('div');
-        item.className = 'dd-item' + (dev===preferred?' sel':'');
-        item.dataset.value = dev;
-        item.textContent = lbl;
-        menu.appendChild(item);
-      });
-      const prefLabel = document.querySelector('#deviceDD .dd-item[data-value="' + preferred + '"]');
-      if(prefLabel&&label) label.textContent = prefLabel.textContent;
-      S.currentDevice = preferred;
-      core.wireDropdown('deviceDD', function(v){ S.currentDevice = v; save('device', v); });
-    })
-    .catch(function(){}); // silently ignore; currentDevice stays '' → backend default
-})();
 
 /* ---------- restore persisted state ---------- */
 (function restore(){

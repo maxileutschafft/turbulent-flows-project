@@ -3,10 +3,15 @@
 Serves the static single-page design UI (``app.html``) and the prediction
 endpoints that back its controls.
 
+The inference device is chosen ONCE at startup (``--device``, or auto-select
+cuda > mps > cpu) and used for every request — there is no per-request or
+in-UI device switch.
+
 Run with::
 
-    uv run python src/app/app.py            # binds 127.0.0.1:8000
+    uv run python src/app/app.py                  # binds 127.0.0.1:8000, auto device
     uv run python src/app/app.py --port 9000
+    uv run python src/app/app.py --device cpu      # force a specific device
 
 """
 
@@ -79,6 +84,10 @@ class BoundedCache:
 # Response-level cache: (naca, round(re), round(aoa,2), view, model) -> full response dict
 _RESPONSE_CACHE = BoundedCache()
 
+# Inference device, resolved once in main() before uvicorn starts serving.
+# Fixed for the lifetime of the process — there is no per-request override.
+DEVICE: str = "cpu"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -86,7 +95,7 @@ async def lifespan(app: FastAPI):
     import inference  # noqa: PLC0415 — import inside lifespan intentional
 
     inference.load_model("gno")
-    logger.info("GNO model ready in CPU RAM; will use device=%s for forward passes", inference.default_device())
+    logger.info("GNO model ready in CPU RAM; will use device=%s for forward passes", DEVICE)
     yield
 
 
@@ -136,30 +145,6 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/api/devices")
-def api_devices() -> dict:
-    """Return the inference devices available on this machine.
-
-    Returns
-    -------
-    JSON payload::
-
-        {
-            "available": ["cuda", "cpu"],
-            "default": "cuda",
-            "labels": {"cuda": "CUDA", "mps": "MPS", "cpu": "CPU"}
-        }
-    """
-    import inference  # noqa: PLC0415
-
-    avail = inference.available_devices()
-    return {
-        "available": avail,
-        "default": inference.default_device(),
-        "labels": {"cuda": "CUDA", "mps": "MPS", "cpu": "CPU"},
-    }
-
-
 @app.get("/api/geometry")
 def geometry(naca: str = "2412", n: int = 200) -> dict:
     """Return NACA 4-digit airfoil surface coordinates (chord normalised to [0, 1]).
@@ -180,6 +165,44 @@ def geometry(naca: str = "2412", n: int = 200) -> dict:
     }
 
 
+# Cache STEP file bytes per NACA code — the export depends only on the code
+# (fixed sample count / span / chord / units), so repeats are free.
+_STEP_CACHE = BoundedCache(maxsize=32)
+
+
+@app.get("/api/export_step")
+def api_export_step(naca: str = "2412") -> Response:
+    """Export the NACA airfoil geometry as a solid STEP (.step) CAD file.
+
+    The exported solid is a short spanwise extrusion (10% chord) of the 2D
+    airfoil profile in its natural, angle-of-attack-free frame — angle of
+    attack is a flow condition, not part of the geometry. Units are metres.
+    """
+    if len(naca) != 4 or not naca.isdigit():
+        raise HTTPException(
+            status_code=400,
+            detail=f"naca must be a 4-digit numeric code, got {naca!r}",
+        )
+
+    if naca in _STEP_CACHE:
+        data = _STEP_CACHE[naca]
+    else:
+        from utils.step_export import naca_airfoil_step_bytes  # noqa: PLC0415
+
+        try:
+            data = naca_airfoil_step_bytes(naca)
+        except Exception as exc:
+            logger.exception("STEP export failed for naca=%s", naca)
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+        _STEP_CACHE[naca] = data
+
+    return Response(
+        content=data,
+        media_type="application/step",
+        headers={"Content-Disposition": f'attachment; filename="naca_{naca}.step"'},
+    )
+
+
 @app.get("/api/predict")
 def api_predict(
     naca: str = "2412",
@@ -187,7 +210,6 @@ def api_predict(
     aoa: float = 0.0,
     view: str = "streamlines",
     model: str = "gno",
-    device: str = "",
 ) -> dict:
     """Run surrogate inference for the given NACA airfoil and flow conditions.
 
@@ -198,7 +220,9 @@ def api_predict(
     aoa      : angle of attack in degrees
     view     : one of ``streamlines, vel_mag, u, v, p, k, omega, nut``
     model    : one of ``gno``, ``transolver``, ``domino``
-    device   : one of ``cuda``, ``mps``, ``cpu`` (empty → auto-select default)
+
+    The inference device is fixed for the process (see ``DEVICE`` / ``--device``)
+    and is not a request parameter.
 
     Returns
     -------
@@ -246,28 +270,13 @@ def api_predict(
             detail=f"model must be one of {sorted(inference.VALID_MODELS)}, got {model!r}",
         )
 
-    # Validate and resolve device
-    if device:
-        if device not in inference._VALID_DEVICES:
-            raise HTTPException(
-                status_code=400,
-                detail=f"device must be one of {sorted(inference._VALID_DEVICES)}, got {device!r}",
-            )
-        if device not in inference.available_devices():
-            raise HTTPException(
-                status_code=400,
-                detail=f"device {device!r} not available on this machine",
-            )
-    resolved_device = device or inference.default_device()
+    resolved_device = DEVICE
 
-    # Response cache key stays device-independent (output is numerically identical)
     cache_key = (naca, round(reynolds), round(aoa, 2), view, model)
     if cache_key in _RESPONSE_CACHE:
-        cached = dict(_RESPONSE_CACHE[cache_key])
-        cached["device"] = resolved_device
-        return cached
+        return _RESPONSE_CACHE[cache_key]
 
-    # Lazy-load the model for the resolved device (idempotent)
+    # Lazy-load the model (idempotent)
     inference.load_model(model, resolved_device)
 
     t0 = time.perf_counter()
@@ -317,20 +326,39 @@ def api_predict(
         "aoa": aoa,
         "view": view,
         "model": model,
+        "device": resolved_device,
         "field_svg": field_svg,
         "colorbar": colorbar,
         "compute_ms": compute_ms,
     }
     _RESPONSE_CACHE[cache_key] = response
-    # Return with device field (not stored in cache since it varies per request)
-    return {**response, "device": resolved_device}
+    return response
 
 
 def main() -> None:
+    global DEVICE
+
     parser = argparse.ArgumentParser(description="Launch the airfoil surrogate web app.")
     parser.add_argument("--host", default="127.0.0.1", help="bind address (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8000, help="bind port (default: 8000)")
+    parser.add_argument(
+        "--device",
+        choices=["cuda", "mps", "cpu"],
+        default=None,
+        help="Inference device, fixed for the process (default: auto-select cuda > mps > cpu)",
+    )
     args = parser.parse_args()
+
+    import inference  # noqa: PLC0415
+
+    if args.device:
+        available = inference.available_devices()
+        if args.device not in available:
+            parser.error(f"--device {args.device!r} is not available on this machine (available: {available})")
+        DEVICE = args.device
+    else:
+        DEVICE = inference.default_device()
+    logger.info("Inference device: %s", DEVICE)
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 

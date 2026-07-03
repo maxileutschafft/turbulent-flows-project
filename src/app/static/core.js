@@ -93,7 +93,7 @@ export function showView(view){
     applyColorbar(designColorbar); renderDesignGeom(); return;
   }
   el.designCanvas.classList.add('predicting');
-  fetch('/api/predict?naca=' + encodeURIComponent(predNaca) + '&reynolds=' + predRe + '&aoa=' + predAoa + '&view=' + encodeURIComponent(view) + '&model=' + predModel + '&device=' + S.currentDevice)
+  fetch('/api/predict?naca=' + encodeURIComponent(predNaca) + '&reynolds=' + predRe + '&aoa=' + predAoa + '&view=' + encodeURIComponent(view) + '&model=' + predModel)
     .then(function(r){ if(!r.ok) return r.json().then(function(e){ throw new Error(e.detail||('HTTP '+r.status)); }); return r.json(); })
     .then(function(data){
       fieldCache[key] = { field_svg: data.field_svg, colorbar: data.colorbar };
@@ -141,7 +141,7 @@ export function generatePrediction(){
   el.genBtn.disabled = true;
   const origHtml = el.genBtn.innerHTML; el.genBtn.innerHTML = '<span class="mini-spin"></span>Predicting…';
   el.designCanvas.classList.add('predicting');
-  fetch('/api/predict?naca=' + encodeURIComponent(naca) + '&reynolds=' + reynolds + '&aoa=' + aoaVal2 + '&view=' + encodeURIComponent(S.currentView) + '&model=' + S.currentModel + '&device=' + S.currentDevice)
+  fetch('/api/predict?naca=' + encodeURIComponent(naca) + '&reynolds=' + reynolds + '&aoa=' + aoaVal2 + '&view=' + encodeURIComponent(S.currentView) + '&model=' + S.currentModel)
     .then(function(r){ if(!r.ok) return r.json().then(function(e){ throw new Error(e.detail||('HTTP '+r.status)); }); return r.json(); })
     .then(function(data){
       // sync AoA slider/label to predicted AoA WITHOUT clearing streamlines (avoid updAoa clearing logic)
@@ -162,6 +162,28 @@ export function generatePrediction(){
     })
     .catch(function(err){ toast('Prediction failed: ' + (err&&err.message||err)); })
     .finally(function(){ el.designCanvas.classList.remove('predicting'); el.genBtn.innerHTML = origHtml; el.genBtn.disabled = false; });
+}
+
+// ---- export .STEP ----
+export function exportStep(){
+  if(el.exportStepBtn.disabled) return;
+  const naca = el.nacaInput.value.trim();
+  if(!/^\d{4}$/.test(naca)){ toast('Enter a valid 4-digit NACA code'); return; }
+  el.exportStepBtn.disabled = true;
+  const origHtml = el.exportStepBtn.innerHTML; el.exportStepBtn.innerHTML = '<span class="mini-spin"></span>Exporting…';
+  fetch('/api/export_step?naca=' + encodeURIComponent(naca))
+    .then(function(r){ if(!r.ok) return r.json().then(function(e){ throw new Error(e.detail||('HTTP '+r.status)); }); return r.blob(); })
+    .then(function(blob){
+      const filename = 'naca_' + naca + '.step';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast('Exported ' + filename);
+    })
+    .catch(function(err){ toast('Export failed: ' + (err&&err.message||err)); })
+    .finally(function(){ el.exportStepBtn.innerHTML = origHtml; el.exportStepBtn.disabled = false; });
 }
 
 // ---- zoom ----
