@@ -2,7 +2,7 @@
 #
 # app.sh — start/stop the airfoil-surrogate web app (with an optional public tunnel).
 #
-#   ./app.sh                   start locally only  → http://127.0.0.1:8000, auto device (cuda > mps > cpu)
+#   ./app.sh                   start locally only  → http://127.0.0.1:8001, auto device (cuda > mps > cpu)
 #   ./app.sh --device mps      start, forcing a specific inference device (cuda | mps | cpu)
 #   ./app.sh --public          start + Cloudflare tunnel → prints a public https URL
 #   ./app.sh --kill            stop the app (and tunnel)
@@ -16,7 +16,7 @@ set -euo pipefail
 
 export PATH="$HOME/.local/bin:$PATH"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PORT=8000
+PORT=8001
 APP_LOG=/tmp/turbulent-flows-app.log
 CF_LOG=/tmp/turbulent-flows-cloudflared.log
 CF_PID=/tmp/turbulent-flows-cf.pid     # PID file for the Cloudflare tunnel
@@ -107,7 +107,7 @@ cd "$REPO_DIR"
 DEVICE_ARGS=()
 [ -n "$DEVICE" ] && DEVICE_ARGS=(--device "$DEVICE")
 echo "starting app on http://127.0.0.1:$PORT ...${DEVICE:+ (device: $DEVICE)}"
-PYTHONPATH=src:src/app nohup uv run python src/app/app.py --host 127.0.0.1 --port "$PORT" "${DEVICE_ARGS[@]}" \
+PYTHONPATH=src:src/app nohup uv run --no-sync python src/app/app.py --host 127.0.0.1 --port "$PORT" "${DEVICE_ARGS[@]+"${DEVICE_ARGS[@]}"}" \
   >"$APP_LOG" 2>&1 &
 
 # wait for the server to answer /healthz

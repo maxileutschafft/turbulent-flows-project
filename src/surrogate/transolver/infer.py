@@ -19,15 +19,6 @@ from surrogate.gno.utils import UnitGaussianNormalizer
 from surrogate.transolver.model import Transolver
 
 
-def _load_normalizer(stats: dict) -> UnitGaussianNormalizer:
-    """Reconstruct a UnitGaussianNormalizer from saved mean/std tensors."""
-    norm = UnitGaussianNormalizer.__new__(UnitGaussianNormalizer)
-    norm.mean = stats["mean"]
-    norm.std = stats["std"]
-    norm.eps = 1e-5
-    return norm
-
-
 def infer(
     input_path: Path | str | Mapping[str, np.ndarray],
     ckpt_path: Path,
@@ -91,7 +82,7 @@ def infer(
 
     # --- target normalizer ---
     if "y_norm" in ckpt:
-        y_norm = _load_normalizer(ckpt["y_norm"])
+        y_norm = UnitGaussianNormalizer.from_stats(ckpt["y_norm"])
     else:
         raise RuntimeError(
             "Checkpoint has no y_norm. Re-run training with the current code to save it."

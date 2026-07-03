@@ -27,6 +27,17 @@ class UnitGaussianNormalizer:
         self.std = x.std(dim=0)
         self.eps = eps
 
+    @classmethod
+    def from_stats(cls, stats: dict, device=None) -> "UnitGaussianNormalizer":
+        """Reconstruct a normalizer from saved mean/std tensors (e.g. a checkpoint)."""
+        norm = cls.__new__(cls)
+        norm.mean = stats["mean"]
+        norm.std = stats["std"]
+        norm.eps = 1e-5
+        if device is not None:
+            norm.to(device)
+        return norm
+
     def encode(self, x):
         return (x - self.mean) / (self.std + self.eps)
 

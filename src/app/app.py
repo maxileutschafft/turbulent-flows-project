@@ -9,7 +9,7 @@ in-UI device switch.
 
 Run with::
 
-    uv run python src/app/app.py                  # binds 127.0.0.1:8000, auto device
+    uv run python src/app/app.py                  # binds 127.0.0.1:8001, auto device
     uv run python src/app/app.py --port 9000
     uv run python src/app/app.py --device cpu      # force a specific device
 
@@ -91,11 +91,17 @@ DEVICE: str = "cpu"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load the GNO model once on server start so the first request isn't slow."""
+    """Load all surrogate checkpoints once on server start so no request pays
+    a cold-load cost. Models stay CPU-resident for the process lifetime and
+    are only moved to the inference device for the duration of a forward pass
+    (see ``inference.predict``)."""
     import inference  # noqa: PLC0415 — import inside lifespan intentional
 
-    inference.load_model("gno")
-    logger.info("GNO model ready in CPU RAM; will use device=%s for forward passes", DEVICE)
+    for name in sorted(inference.VALID_MODELS):
+        inference.load_model(name)
+    logger.info(
+        "All models ready in CPU RAM; will use device=%s for forward passes", DEVICE
+    )
     yield
 
 
@@ -340,7 +346,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Launch the airfoil surrogate web app.")
     parser.add_argument("--host", default="127.0.0.1", help="bind address (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8000, help="bind port (default: 8000)")
+    parser.add_argument("--port", type=int, default=8001, help="bind port (default: 8001)")
     parser.add_argument(
         "--device",
         choices=["cuda", "mps", "cpu"],

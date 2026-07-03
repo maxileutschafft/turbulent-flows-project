@@ -128,7 +128,7 @@ The device (`cuda` / `mps` / `cpu`) is auto-selected. Set the optional `save_mes
 A small local web app renders the airfoil geometry and lets you sweep NACA code, Reynolds number, and angle of attack across all three surrogates, with live streamline / scalar-field visualizations. The inference device is chosen once at startup (auto-selects `cuda` > `mps` > `cpu`, or force one with `--device`) — there is no in-UI device switch.
 
 ```bash
-./app.sh                    # start → http://127.0.0.1:8000, auto device
+./app.sh                    # start → http://127.0.0.1:8001, auto device
 ./app.sh --device cpu       # start, forcing a specific inference device
 ./app.sh --public           # start + a temporary public HTTPS URL via a Cloudflare Quick Tunnel
                              # (requires `cloudflared`; no login, share the URL only with people you trust)
@@ -138,10 +138,10 @@ A small local web app renders the airfoil geometry and lets you sweep NACA code,
 or run it directly:
 
 ```bash
-PYTHONPATH=src:src/app uv run python src/app/app.py --host 127.0.0.1 --port 8000
+PYTHONPATH=src:src/app uv run python src/app/app.py --host 127.0.0.1 --port 8001
 ```
 
-Open `http://127.0.0.1:8000` in a browser. Pick a NACA code, Reynolds number, angle of attack, and surrogate model (GNO / Transolver / DoMINO), then click "Generate prediction". The "View" dropdown switches between streamlines and the six scalar fields (`u`, `v`, `p`, `k`, `ω`, `νᵗ`, plus `|v|`).
+Open `http://127.0.0.1:8001` in a browser. Pick a NACA code, Reynolds number, angle of attack, and surrogate model (GNO / Transolver / DoMINO), then click "Generate prediction". The "View" dropdown switches between streamlines and the six scalar fields (`u`, `v`, `p`, `k`, `ω`, `νᵗ`, plus `|v|`).
 
 "Export .STEP" (bottom right) downloads the current NACA airfoil as a solid CAD file (`src/utils/step_export.py`) — a short spanwise extrusion (10% chord) of the 2D profile, in its natural angle-of-attack-free frame (angle of attack is a flow condition, not part of the geometry), written as an AP214 STEP file via the OpenCASCADE Python bindings (`cadquery-ocp-novtk`).
 

@@ -34,6 +34,7 @@ from __future__ import annotations
 import logging
 import math
 import threading
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +57,10 @@ VALID_MODELS = {"gno", "transolver", "domino"}
 _VALID_DEVICES = {"cuda", "mps", "cpu"}
 
 # In-memory prediction cache: (model, naca, round(reynolds), round(aoa, 2)) -> dict
-_CACHE: dict[tuple, dict] = {}
+# Bounded LRU — keeps a long-running server from accumulating per-node result
+# arrays without bound as users sweep the sliders.
+_CACHE_MAXSIZE = 20
+_CACHE: OrderedDict[tuple, dict] = OrderedDict()
 
 # Checkpoint locations relative to project root
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -94,15 +98,8 @@ def available_devices() -> list[str]:
 
     Order: cuda first, then mps, then cpu (cpu always present).
     """
-    import torch
-
-    devices: list[str] = []
-    if torch.cuda.is_available():
-        devices.append("cuda")
-    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-        devices.append("mps")
-    devices.append("cpu")
-    return devices
+    from surrogate.gno.infer import available_devices as _available_devices
+    return _available_devices()
 
 
 def default_device() -> str:
@@ -114,16 +111,6 @@ def default_device() -> str:
 # ---------------------------------------------------------------------------
 # Model loading
 # ---------------------------------------------------------------------------
-
-
-def _rebuild_y_norm(ckpt_y_norm: dict, device) -> Any:
-    """Reconstruct a UnitGaussianNormalizer from saved mean/std tensors."""
-    from surrogate.gno.utils import UnitGaussianNormalizer
-    yn = UnitGaussianNormalizer.__new__(UnitGaussianNormalizer)
-    yn.mean = ckpt_y_norm["mean"].to(device)
-    yn.std = ckpt_y_norm["std"].to(device)
-    yn.eps = 1e-5
-    return yn
 
 
 def load_model(name: str = "gno", device: str | None = None) -> dict:
@@ -153,6 +140,8 @@ def load_model(name: str = "gno", device: str | None = None) -> dict:
 
     import torch
 
+    from surrogate.gno.utils import UnitGaussianNormalizer
+
     cpu = torch.device("cpu")
     ckpt_path = _CKPT_PATHS[name]
     if not ckpt_path.exists():
@@ -172,7 +161,7 @@ def load_model(name: str = "gno", device: str | None = None) -> dict:
         model.load_state_dict(ckpt["model_state_dict"])
         model.eval()
 
-        y_norm = _rebuild_y_norm(ckpt["y_norm"], cpu)
+        y_norm = UnitGaussianNormalizer.from_stats(ckpt["y_norm"], device=cpu)
 
         bundle: dict = {
             "model": model,
@@ -201,7 +190,7 @@ def load_model(name: str = "gno", device: str | None = None) -> dict:
         model.load_state_dict(ckpt["model_state_dict"])
         model.eval()
 
-        y_norm = _rebuild_y_norm(ckpt["y_norm"], cpu)
+        y_norm = UnitGaussianNormalizer.from_stats(ckpt["y_norm"], device=cpu)
 
         bundle = {
             "model": model,
@@ -233,7 +222,7 @@ def load_model(name: str = "gno", device: str | None = None) -> dict:
         model.load_state_dict(ckpt["model_state_dict"])
         model.eval()
 
-        y_norm = _rebuild_y_norm(ckpt["y_norm"], cpu)
+        y_norm = UnitGaussianNormalizer.from_stats(ckpt["y_norm"], device=cpu)
 
         bundle = {
             "model": model,
@@ -377,6 +366,7 @@ def predict(
     # Cache key is device-independent: numerics are identical across devices.
     cache_key = (model, naca, round(reynolds), round(aoa_deg, 2))
     if cache_key in _CACHE:
+        _CACHE.move_to_end(cache_key)
         return _CACHE[cache_key]
 
     # Resolve device and load model (always CPU-resident; device only governs
@@ -435,6 +425,9 @@ def predict(
     }
 
     _CACHE[cache_key] = result
+    _CACHE.move_to_end(cache_key)
+    while len(_CACHE) > _CACHE_MAXSIZE:
+        _CACHE.popitem(last=False)
     return result
 
 
