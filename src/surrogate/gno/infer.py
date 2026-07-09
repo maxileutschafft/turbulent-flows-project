@@ -10,8 +10,12 @@ import torch
 from surrogate.gno.graph import build_graph
 from surrogate.gno.model import KernelNN
 from surrogate.gno.schema import (
+    GNO_INPUT_COLS,
     GNO_TARGET_COLS,
+    INPUT_ALIASES,
+    TARGET_ALIASES,
     apply_target_log_inverse,
+    require_keys,
     npz_gno_input,
     npz_gno_target,
     npz_pos,
@@ -78,10 +82,17 @@ def infer(
     ckpt = torch.load(ckpt_path, weights_only=False, map_location=device)
     train_args = ckpt["args"]
 
+    input_mean = train_args.get("input_mean")
+    input_std = train_args.get("input_std")
+    sdf_col = train_args.get("sdf_col", 2)
+
     model = KernelNN(
         width_node=train_args["width_node"],
         ker_width=train_args["ker_width"],
         depth=train_args["depth"],
+        input_mean=input_mean,
+        input_std=input_std,
+        sdf_col=sdf_col,
     ).to(device)
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
@@ -91,12 +102,16 @@ def infer(
         assert input_path_for_load is not None
         with np.load(input_path_for_load) as raw_npz:
             raw = {key: raw_npz[key] for key in raw_npz.files}
+
+    missing_inputs = require_keys(raw, GNO_INPUT_COLS, aliases=INPUT_ALIASES)
+    if missing_inputs:
+        raise KeyError(f"Input scenario is missing required columns: {missing_inputs}")
     pos = npz_pos(raw)
     x = npz_gno_input(raw)
 
     # `npz_gno_target` requires all 6 target channels; in-memory scenarios
     # generated for prediction won't have ground truth, so skip in that case.
-    has_target = all(col in raw for col in ("u", "v", "p", "k", "omega", "nut"))
+    has_target = not require_keys(raw, GNO_TARGET_COLS, aliases=TARGET_ALIASES)
     target = npz_gno_target(raw) if has_target else None
 
     # --- target normalizer (inputs are normalized inside the model) ---
@@ -149,7 +164,8 @@ def infer(
             "checkpoint": str(ckpt_path),
             "ckpt_epoch": ckpt["epoch"],
             "ckpt_loss": ckpt["loss"],
-            "target_cols": GNO_TARGET_COLS,
+            "target_cols": tuple(train_args.get("target_cols", GNO_TARGET_COLS)),
+            "input_cols": tuple(train_args.get("input_cols", GNO_INPUT_COLS)),
             "elapsed_s": elapsed,
         },
     }

@@ -21,8 +21,8 @@ from .utils import DenseNet
 #     angle_of_attack,
 #     reynolds              : z-score (per-sample stats, one obs per scenario)
 # ---------------------------------------------------------------------------
-INPUT_MEAN = (0.803942, 0.006600, 0.0,       2.466650, -0.005332, -0.141480, 247001.0)
-INPUT_STD  = (0.739590, 0.335935, 1.0,       1.057862,  0.138850,  3.032353, 105913.0)
+DEFAULT_INPUT_MEAN = (0.803942, 0.006600, 0.0,       2.466650, -0.005332, -0.141480, 247001.0)
+DEFAULT_INPUT_STD  = (0.739590, 0.335935, 1.0,       1.057862,  0.138850,  3.032353, 105913.0)
 SDF_COL = 2          # index of `sdf` in GNO_INPUT_COLS — replaced by log10
 SDF_LOG_EPS = 1.0e-6
 
@@ -49,12 +49,26 @@ class KernelNN(nn.Module):
         ker_in: int = 6,
         in_width: int = 7,
         out_width: int = 6,
+        input_mean: tuple[float, ...] | list[float] | None = None,
+        input_std: tuple[float, ...] | list[float] | None = None,
+        sdf_col: int = SDF_COL,
     ):
         super().__init__()
         self.depth = depth
+        self.in_width = in_width
+        self.out_width = out_width
+        self.sdf_col = sdf_col
 
-        self.register_buffer("input_mean", torch.tensor(INPUT_MEAN, dtype=torch.float32))
-        self.register_buffer("input_std", torch.tensor(INPUT_STD, dtype=torch.float32))
+        mean_values = DEFAULT_INPUT_MEAN if input_mean is None else tuple(input_mean)
+        std_values = DEFAULT_INPUT_STD if input_std is None else tuple(input_std)
+        if len(mean_values) != in_width or len(std_values) != in_width:
+            raise ValueError(
+                "input_mean/input_std must match in_width; "
+                f"got {len(mean_values)} and {len(std_values)} for in_width={in_width}"
+            )
+
+        self.register_buffer("input_mean", torch.tensor(mean_values, dtype=torch.float32))
+        self.register_buffer("input_std", torch.tensor(std_values, dtype=torch.float32))
 
         self.fc1 = nn.Linear(in_width, width_node)
 
@@ -76,9 +90,11 @@ class KernelNN(nn.Module):
         """Apply the hardcoded input transform: z-score for all cols except
         `sdf`, which uses log10(sdf + eps). Input `x` is raw physical units in
         GNO_INPUT_COLS order."""
+        if x.shape[-1] != self.in_width:
+            raise ValueError(f"Expected input width {self.in_width}, got {x.shape[-1]}")
         z = (x - self.input_mean) / self.input_std
-        log_sdf = torch.log10(x[:, SDF_COL:SDF_COL + 1] + SDF_LOG_EPS)
-        return torch.cat([z[:, :SDF_COL], log_sdf, z[:, SDF_COL + 1:]], dim=1)
+        log_sdf = torch.log10(x[:, self.sdf_col:self.sdf_col + 1] + SDF_LOG_EPS)
+        return torch.cat([z[:, :self.sdf_col], log_sdf, z[:, self.sdf_col + 1:]], dim=1)
 
     def forward(self, x, edge_index, edge_attr):
         x = self.normalize_inputs(x)

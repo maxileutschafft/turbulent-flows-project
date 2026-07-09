@@ -182,6 +182,40 @@ gradient checkpointing, and an output linear layer. The connectivity graph is a
 bidirectional k-nearest-neighbour graph (k = 16) built per-scenario from the
 mesh cell-centre coordinates. The resulting GNO has approx. 2M parameters.
 
+## Definitive Screening Workflow
+
+If you want to screen hyperparameters before deeper optimization, the
+repository now includes a DSD-style screening utility in
+[src/utils/screening.py](src/utils/screening.py) and a generator script in
+[scripts/generate_screening_design.py](scripts/generate_screening_design.py).
+
+Default screening factors:
+
+| Factor | Low | Center | High | Notes |
+|---|---:|---:|---:|---|
+| `width_node` | 16 | 32 | 64 | integer |
+| `depth` | 4 | 6 | 8 | integer |
+| `ker_width` | 128 | 256 | 512 | integer |
+| `k_neighbors` | 8 | 16 | 24 | integer |
+| `learning_rate` | 3e-4 | 1e-3 | 3e-3 | log-scaled |
+| `weight_decay` | 1e-6 | 1e-5 | 1e-4 | log-scaled |
+
+Objective metrics:
+
+- Primary: `val_nrmse_u`, `val_nrmse_v`, `val_nrmse_p`, `val_nrmse_k`, `val_nrmse_omega`, `val_nrmse_nut`
+- Secondary: `val_cl_rel_err`, `val_cd_rel_err`, `val_near_wall_rmse`
+
+The design uses a DSD-sized run budget and selects rows from the 3-level
+candidate cube by maximizing the information in a main-effects + quadratic
+model. That is well suited for first-pass hyperparameter screening before
+Bayesian optimization or finer sweeps.
+
+Example:
+
+```bash
+uv run python scripts/generate_screening_design.py --output output/screening_design.csv --json output/screening_design.json
+```
+
 ### Reference
 
 [1] Z. Li, N. Kovachki, K. Azizzadenesheli, B. Liu, K. Bhattacharya, A. Stuart,

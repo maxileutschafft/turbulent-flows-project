@@ -19,6 +19,12 @@ FIELD_LABELS: dict[str, str] = {
     "nut": "νᵗ [m²/s]",
 }
 
+FIELD_ALIASES: dict[str, str] = {
+    "nu_t": "nut",
+    "nu_turb": "nut",
+    "turbulent_viscosity": "nut",
+}
+
 # Column index within the 6-channel GNO output / target tensor (GNO_TARGET_COLS order).
 _FIELD_COL: dict[str, int] = {
     col: i for i, col in enumerate(["u", "v", "p", "k", "omega", "nut"])
@@ -32,6 +38,10 @@ def get_naca_code(result: dict) -> str | None:
     return str(code) if code is not None else None
 
 
+def _canonical_field(field: str) -> str:
+    return FIELD_ALIASES.get(field, field)
+
+
 def field_values(result: dict, field: str, source: str = "prediction") -> np.ndarray:
     """Extract a named scalar field as a flat numpy array from an infer() result.
 
@@ -43,6 +53,7 @@ def field_values(result: dict, field: str, source: str = "prediction") -> np.nda
     Returns:
         1-D float32 array of length N (number of mesh nodes).
     """
+    field = _canonical_field(field)
     tensor = result["predictions"] if source == "prediction" else result["target"]
     data = tensor.numpy()
     if field == "vel_mag":

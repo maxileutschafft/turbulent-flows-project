@@ -44,7 +44,17 @@ from stage_common.aero_post import (  # noqa: E402
 
 CHANNELS = ["u", "v", "p", "k", "omega", "nut"]
 P_INDEX = CHANNELS.index("p")
+LOG_CHANNELS = {"k", "omega", "nut"}   # log10-scaled targets -> score in log space (avoids 10**x overflow)
 _NAME_RE = _re.compile(r"NACA(\d{4})_([pn])([\d.]+)_([\d.eE+]+)")
+
+
+def channel_nrmse(pred_col: np.ndarray, truth_col: np.ndarray, log_space: bool) -> float:
+    """NRMSE for one channel; log-channels are scored in log10 space so that
+    out-of-distribution 10**x overflow does not blow the metric up to inf."""
+    if log_space:
+        pred_col = np.log10(np.clip(pred_col, 1e-30, 1e30))
+        truth_col = np.log10(np.clip(truth_col, 1e-30, 1e30))
+    return nrmse(pred_col, truth_col)
 
 
 # --------------------------------------------------------------------------- #
@@ -102,7 +112,7 @@ def evaluate_sample(d: dict, pred: np.ndarray, truth: np.ndarray,
     row["camber"], row["camber_pos"], row["thickness"] = m, p_pos, t
 
     for i, ch in enumerate(CHANNELS):
-        row[f"nrmse_{ch}"] = nrmse(pred[:, i], truth[:, i])
+        row[f"nrmse_{ch}"] = channel_nrmse(pred[:, i], truth[:, i], ch in LOG_CHANNELS)
     row["nrmse_mean"] = float(np.mean([row[f"nrmse_{c}"] for c in CHANNELS]))
 
     u_mag = u_mag_of(d, reynolds)

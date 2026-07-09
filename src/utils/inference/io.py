@@ -10,6 +10,14 @@ import numpy as np
 from surrogate.gno.schema import GNO_TARGET_COLS
 
 
+def _is_scalar_like(value: Any) -> bool:
+    if np.isscalar(value):
+        return True
+    if isinstance(value, np.ndarray) and value.ndim == 0:
+        return True
+    return False
+
+
 def save_predictions_npz(result: dict, path: str | Path) -> None:
     """Write GNO predictions as a .npz file mirroring the dataset format.
 
@@ -36,13 +44,19 @@ def save_predictions_npz(result: dict, path: str | Path) -> None:
     for i, col in enumerate(GNO_TARGET_COLS):
         payload[col] = preds[:, i]
 
-    for key in ("naca_code", "reynolds", "angle_of_attack", "cl", "cd"):
-        if key in raw:
-            payload[key] = raw[key]
+    for key, value in raw.items():
+        if key in payload:
+            continue
+        if _is_scalar_like(value):
+            payload[key] = value
 
     meta = result.get("meta", {})
     payload["checkpoint"] = str(meta.get("checkpoint", ""))
     payload["ckpt_epoch"] = int(meta.get("ckpt_epoch", -1))
+    if "target_cols" in meta:
+        payload["target_cols"] = np.array(meta["target_cols"], dtype=object)
+    if "input_cols" in meta:
+        payload["input_cols"] = np.array(meta["input_cols"], dtype=object)
 
     np.savez_compressed(path, **payload)
     print(f"Saved predictions → {path}")
