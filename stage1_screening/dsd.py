@@ -75,7 +75,7 @@ PRESETS: dict[str, list[Factor]] = {
     "in_distribution": [
         Factor("m", 2, 4, 6, integer=True, unit="%c"),
         Factor("p", 2, 4, 6, integer=True, unit="1/10 c"),
-        Factor("t", 9, 15, 21, integer=True, unit="%c"),
+        Factor("t", 8, 13, 18, integer=True, unit="%c"),   # matches training thickness 8-18%
         Factor("reynolds", 1.0e5, 3.0e5, 5.0e5, unit="-"),
         Factor("aoa", -5.0, 0.0, 5.0, unit="deg"),
     ],
