@@ -37,7 +37,7 @@ class NNConvLayer(MessagePassing):
         return aggr_out + torch.mm(x, self.root) + self.bias
 
     def message(self, x_j, edge_attr):
-        # kernel_nn maps edge_attr → weight matrix of shape [E, in_channels * out_channels]
+        # kernel_nn maps edge_attr -> weight matrix of shape [E, in_channels * out_channels]
         weight = self.kernel_nn(edge_attr).view(-1, self.in_channels, self.out_channels)
-        # x_j: [E, in_channels] → [E, 1, in_channels]
+        # x_j: [E, in_channels] -> [E, 1, in_channels]
         return torch.bmm(x_j.unsqueeze(1), weight).squeeze(1)

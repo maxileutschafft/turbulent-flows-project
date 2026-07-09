@@ -49,7 +49,7 @@ def infer(
 
     Args:
         input_path: Either a path (str / `Path`) to a `.npz` scenario file, OR
-            a mapping (e.g. dict) from key → numpy array already loaded in
+            a mapping (e.g. dict) from key -> numpy array already loaded in
             memory (matching the `.npz` schema). Mappings are used directly
             without disk I/O — useful for in-memory generated scenarios.
         ckpt_path:  Path to a model checkpoint produced by train.py.

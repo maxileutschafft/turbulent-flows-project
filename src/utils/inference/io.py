@@ -59,4 +59,4 @@ def save_predictions_npz(result: dict, path: str | Path) -> None:
         payload["input_cols"] = np.array(meta["input_cols"], dtype=object)
 
     np.savez_compressed(path, **payload)
-    print(f"Saved predictions → {path}")
+    print(f"Saved predictions -> {path}")

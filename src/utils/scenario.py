@@ -175,6 +175,6 @@ def build_scenario(
             fh.attrs["bbox_y_min"]      = float(ymin)
             fh.attrs["bbox_y_max"]      = float(ymax)
 
-        print(f"Saved mesh → {save_mesh_to}")
+        print(f"Saved mesh -> {save_mesh_to}")
 
     return scenario

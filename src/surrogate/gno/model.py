@@ -31,7 +31,7 @@ class KernelNN(nn.Module):
     """Graph Neural Operator: learns a parametric PDE solution operator.
 
     Architecture:
-        normalize_input  →  fc1  →  depth × NNConvLayer  →  fc2
+        normalize_input  ->  fc1  ->  depth × NNConvLayer  ->  fc2
 
     Input normalization is baked into the network using fixed constants
     (`INPUT_MEAN`, `INPUT_STD`, `SDF_LOG_EPS`) so every call — training,

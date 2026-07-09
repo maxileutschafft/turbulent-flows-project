@@ -1,4 +1,9 @@
 """Run the GNO on a scenario and save the prediction as .npz (for the warm-start)."""
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(errors="replace")
+except Exception:
+    pass
 import argparse, sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))

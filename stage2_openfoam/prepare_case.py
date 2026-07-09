@@ -2,6 +2,11 @@
 Run in the uv env (needs numpy/scipy/h5py + the repo). Then run ./Allrun in the
 OpenFOAM environment.
 """
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(errors="replace")
+except Exception:
+    pass
 import argparse, shutil, sys
 from pathlib import Path
 

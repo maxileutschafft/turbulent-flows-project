@@ -9,7 +9,7 @@ import numpy as np
 def naca4_coords(code: str, n: int = 300) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Return (xu, yu, xl, yl) surface coordinates for a NACA 4-digit airfoil.
 
-    chord is normalised to [0, 1]; upper surface first (LE→TE), lower surface reversed (TE→LE).
+    chord is normalised to [0, 1]; upper surface first (LE->TE), lower surface reversed (TE->LE).
     """
     if len(code) != 4 or not code.isdigit():
         raise ValueError(f"Expected a 4-digit NACA code, got {code!r}")
@@ -50,7 +50,7 @@ def naca4_coords(code: str, n: int = 300) -> tuple[np.ndarray, np.ndarray, np.nd
 def naca4_polygon(code: str, n: int = 300) -> mpatches.Polygon:
     """Return a closed matplotlib Polygon for the NACA 4-digit airfoil silhouette."""
     xu, yu, xl, yl = naca4_coords(code, n=n)
-    # Trace: upper surface LE→TE, lower surface TE→LE
+    # Trace: upper surface LE->TE, lower surface TE->LE
     verts = np.column_stack([
         np.concatenate([xu, xl[::-1]]),
         np.concatenate([yu, yl[::-1]]),
