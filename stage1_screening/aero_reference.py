@@ -114,14 +114,16 @@ def ensure_xfoil_binary() -> str:
     import io
     import urllib.request
     import zipfile
-    url = "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.zip"
+    url = "https://web.mit.edu/drela/Public/web/xfoil/XFOIL6.99.zip"
     _XFOIL_CACHE.mkdir(parents=True, exist_ok=True)
     dest = _XFOIL_CACHE / "xfoil.exe"
     print(f"[xfoil] binary not found - downloading {url} ...")
     data = urllib.request.urlopen(url, timeout=180).read()
     with zipfile.ZipFile(io.BytesIO(data)) as z:
-        name = next(n for n in z.namelist() if n.lower().endswith("xfoil.exe"))
-        with z.open(name) as src, open(dest, "wb") as dst:
+        cands = [n for n in z.namelist() if n.lower().endswith("xfoil.exe")]
+        if not cands:
+            raise RuntimeError(f"xfoil.exe not found inside {url}; archive has: {z.namelist()[:25]}")
+        with z.open(cands[0]) as src, open(dest, "wb") as dst:
             dst.write(src.read())
     print(f"[xfoil] ready at {dest}")
     return str(dest)
