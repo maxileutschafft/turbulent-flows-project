@@ -1,0 +1,325 @@
+{
+  "preset": "ood_probe",
+  "factors": [
+    {
+      "name": "m",
+      "low": 2,
+      "center": 4,
+      "high": 6,
+      "integer": true,
+      "unit": "%c"
+    },
+    {
+      "name": "p",
+      "low": 2,
+      "center": 4,
+      "high": 6,
+      "integer": true,
+      "unit": "1/10 c"
+    },
+    {
+      "name": "t",
+      "low": 6,
+      "center": 15,
+      "high": 24,
+      "integer": true,
+      "unit": "%c"
+    },
+    {
+      "name": "reynolds",
+      "low": 100000.0,
+      "center": 500000.0,
+      "high": 900000.0,
+      "integer": false,
+      "unit": "-"
+    },
+    {
+      "name": "aoa",
+      "low": -10.0,
+      "center": 0.0,
+      "high": 10.0,
+      "integer": false,
+      "unit": "deg"
+    }
+  ],
+  "n_runs": 13,
+  "conference_order": 6,
+  "ghost_factors": 1,
+  "coded_matrix": [
+    [
+      0,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      0,
+      1,
+      -1,
+      -1
+    ],
+    [
+      1,
+      1,
+      0,
+      1,
+      -1
+    ],
+    [
+      1,
+      -1,
+      1,
+      0,
+      1
+    ],
+    [
+      1,
+      -1,
+      -1,
+      1,
+      0
+    ],
+    [
+      1,
+      1,
+      -1,
+      -1,
+      1
+    ],
+    [
+      0,
+      -1,
+      -1,
+      -1,
+      -1
+    ],
+    [
+      -1,
+      0,
+      -1,
+      1,
+      1
+    ],
+    [
+      -1,
+      -1,
+      0,
+      -1,
+      1
+    ],
+    [
+      -1,
+      1,
+      -1,
+      0,
+      -1
+    ],
+    [
+      -1,
+      1,
+      1,
+      -1,
+      0
+    ],
+    [
+      -1,
+      -1,
+      1,
+      1,
+      -1
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  ],
+  "runs": [
+    {
+      "run_id": 1,
+      "naca_code": "4624",
+      "reynolds": 900000.0,
+      "aoa": 10.0,
+      "coded": {
+        "m": 0,
+        "p": 1,
+        "t": 1,
+        "reynolds": 1,
+        "aoa": 1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 2,
+      "naca_code": "6424",
+      "reynolds": 100000.0,
+      "aoa": -10.0,
+      "coded": {
+        "m": 1,
+        "p": 0,
+        "t": 1,
+        "reynolds": -1,
+        "aoa": -1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 3,
+      "naca_code": "6615",
+      "reynolds": 900000.0,
+      "aoa": -10.0,
+      "coded": {
+        "m": 1,
+        "p": 1,
+        "t": 0,
+        "reynolds": 1,
+        "aoa": -1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 4,
+      "naca_code": "6224",
+      "reynolds": 500000.0,
+      "aoa": 10.0,
+      "coded": {
+        "m": 1,
+        "p": -1,
+        "t": 1,
+        "reynolds": 0,
+        "aoa": 1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 5,
+      "naca_code": "6206",
+      "reynolds": 900000.0,
+      "aoa": 0.0,
+      "coded": {
+        "m": 1,
+        "p": -1,
+        "t": -1,
+        "reynolds": 1,
+        "aoa": 0
+      },
+      "ood": true
+    },
+    {
+      "run_id": 6,
+      "naca_code": "6606",
+      "reynolds": 100000.0,
+      "aoa": 10.0,
+      "coded": {
+        "m": 1,
+        "p": 1,
+        "t": -1,
+        "reynolds": -1,
+        "aoa": 1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 7,
+      "naca_code": "4206",
+      "reynolds": 100000.0,
+      "aoa": -10.0,
+      "coded": {
+        "m": 0,
+        "p": -1,
+        "t": -1,
+        "reynolds": -1,
+        "aoa": -1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 8,
+      "naca_code": "2406",
+      "reynolds": 900000.0,
+      "aoa": 10.0,
+      "coded": {
+        "m": -1,
+        "p": 0,
+        "t": -1,
+        "reynolds": 1,
+        "aoa": 1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 9,
+      "naca_code": "2215",
+      "reynolds": 100000.0,
+      "aoa": 10.0,
+      "coded": {
+        "m": -1,
+        "p": -1,
+        "t": 0,
+        "reynolds": -1,
+        "aoa": 1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 10,
+      "naca_code": "2606",
+      "reynolds": 500000.0,
+      "aoa": -10.0,
+      "coded": {
+        "m": -1,
+        "p": 1,
+        "t": -1,
+        "reynolds": 0,
+        "aoa": -1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 11,
+      "naca_code": "2624",
+      "reynolds": 100000.0,
+      "aoa": 0.0,
+      "coded": {
+        "m": -1,
+        "p": 1,
+        "t": 1,
+        "reynolds": -1,
+        "aoa": 0
+      },
+      "ood": false
+    },
+    {
+      "run_id": 12,
+      "naca_code": "2224",
+      "reynolds": 900000.0,
+      "aoa": -10.0,
+      "coded": {
+        "m": -1,
+        "p": -1,
+        "t": 1,
+        "reynolds": 1,
+        "aoa": -1
+      },
+      "ood": true
+    },
+    {
+      "run_id": 13,
+      "naca_code": "4415",
+      "reynolds": 500000.0,
+      "aoa": 0.0,
+      "coded": {
+        "m": 0,
+        "p": 0,
+        "t": 0,
+        "reynolds": 0,
+        "aoa": 0
+      },
+      "ood": false
+    }
+  ]
+}
