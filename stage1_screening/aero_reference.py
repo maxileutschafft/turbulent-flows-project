@@ -89,8 +89,51 @@ def evaluate_neuralfoil(
 # --------------------------------------------------------------------------- #
 
 
+_XFOIL_CACHE = Path(__file__).resolve().parent / ".tools"
+_XFOIL_EXE: str | None = None
+
+
+def _cached_xfoil() -> str | None:
+    p = _XFOIL_CACHE / "xfoil.exe"
+    return str(p) if p.exists() else None
+
+
 def xfoil_available() -> bool:
-    return shutil.which("xfoil") is not None
+    return shutil.which("xfoil") is not None or _cached_xfoil() is not None
+
+
+def ensure_xfoil_binary() -> str:
+    """Path to an xfoil binary. On Windows, auto-download + cache xfoil.exe if missing."""
+    import os
+    exe = shutil.which("xfoil") or _cached_xfoil()
+    if exe:
+        return exe
+    if os.name != "nt":
+        raise RuntimeError("XFOIL auto-download is Windows-only; on Linux install it "
+                           "(e.g. `apt install xfoil`) and put it on PATH.")
+    import io
+    import urllib.request
+    import zipfile
+    url = "https://web.mit.edu/drela/Public/web/xfoil/xfoil6.99.zip"
+    _XFOIL_CACHE.mkdir(parents=True, exist_ok=True)
+    dest = _XFOIL_CACHE / "xfoil.exe"
+    print(f"[xfoil] binary not found - downloading {url} ...")
+    data = urllib.request.urlopen(url, timeout=180).read()
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        name = next(n for n in z.namelist() if n.lower().endswith("xfoil.exe"))
+        with z.open(name) as src, open(dest, "wb") as dst:
+            dst.write(src.read())
+    print(f"[xfoil] ready at {dest}")
+    return str(dest)
+
+
+def xfoil_exe(auto_download: bool = True) -> str:
+    global _XFOIL_EXE
+    if _XFOIL_EXE:
+        return _XFOIL_EXE
+    _XFOIL_EXE = (shutil.which("xfoil") or _cached_xfoil()
+                  or (ensure_xfoil_binary() if auto_download else "xfoil"))
+    return _XFOIL_EXE
 
 
 def evaluate_xfoil(
@@ -104,21 +147,26 @@ def evaluate_xfoil(
     timeout: float = 40.0,
     xfoil_bin: str = "xfoil",
 ) -> Polar:
+    exe = xfoil_exe() if xfoil_bin == "xfoil" else (shutil.which(xfoil_bin) or xfoil_bin)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        dat = write_dat(code, tmp / "af.dat", n=n_coords)
-        polar = tmp / "polar.txt"
+        write_dat(code, tmp / "af.dat", n=n_coords)  # bare names; xfoil runs with cwd=tmp
+        polar = tmp / "polar.txt"                     # (avoids XFOIL's short filename-buffer limit)
 
-        cmds = ["PLOP", "G F", "", f"LOAD {dat}", "PANE", "OPER", f"VISC {reynolds:.1f}", "MACH 0", f"ITER {n_iter}"]
+        cmds = ["PLOP", "G", "",                       # toggle graphics off, exit PLOP
+                "LOAD af.dat", "PANE",
+                "OPER", f"VISC {reynolds:.1f}", "MACH 0", f"ITER {n_iter}"]
         if xtr is not None:
             cmds += ["VPAR", f"XTR {xtr} {xtr}", ""]
-        cmds += ["PACC", str(polar), "", f"ALFA {aoa:.3f}", "PACC", "", "", "QUIT", ""]
-        script = "\n".join(cmds)
+        cmds += ["PACC", "polar.txt", "",             # start polar accumulation -> polar.txt
+                 f"ALFA {aoa:.3f}",
+                 "PACC", "", "QUIT", ""]              # stop accumulation, exit OPER, quit
+        script = "\n".join(cmds) + "\n"
 
         try:
-            subprocess.run([xfoil_bin], input=script, text=True, capture_output=True,
-                           timeout=timeout, cwd=tmp)
-        except (subprocess.TimeoutExpired, FileNotFoundError):
+            subprocess.run([exe], input=script, text=True, capture_output=True,
+                           timeout=timeout, cwd=str(tmp))
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
             return Polar(code, reynolds, aoa, np.nan, np.nan, np.nan, False, "xfoil")
 
         cl = cd = cm = np.nan
@@ -126,13 +174,13 @@ def evaluate_xfoil(
         if polar.exists():
             for line in polar.read_text().splitlines():
                 parts = line.split()
-                if len(parts) >= 5:
+                if len(parts) >= 7:                   # data rows: alpha CL CD CDp CM Top_Xtr Bot_Xtr
                     try:
-                        a = float(parts[0])
+                        a, clv, cdv, cmv = float(parts[0]), float(parts[1]), float(parts[2]), float(parts[4])
                     except ValueError:
-                        continue
-                    if abs(a - aoa) < 1e-3:
-                        cl, cd, cm = float(parts[1]), float(parts[2]), float(parts[4])
+                        continue                       # skip header / separator lines
+                    if abs(a - aoa) < 1e-2:
+                        cl, cd, cm = clv, cdv, cmv
                         converged = True
                         break
         return Polar(code, reynolds, aoa, cl, cd, cm, converged, "xfoil")
