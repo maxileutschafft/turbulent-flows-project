@@ -37,6 +37,6 @@ functions
         pitchAxis       (0 0 1);
         magUInf         3;
         lRef            1.0;
-        Aref            1.0;
+        Aref            0.1;
     }
 }

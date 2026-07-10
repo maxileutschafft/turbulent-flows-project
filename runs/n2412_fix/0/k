@@ -8,19 +8,19 @@ FoamFile
 }
 
 dimensions      [0 2 -2 0 0 0 0];
-internalField   uniform 0.03375;
+internalField   uniform 0.000864;
 
 boundaryField
 {
     farfield
     {
         type            freestream;
-        freestreamValue uniform 0.03375;
+        freestreamValue uniform 0.000864;
     }
     airfoil
     {
         type            kqRWallFunction;
-        value           uniform 0.03375;
+        value           uniform 0.000864;
     }
     frontAndBack
     {
