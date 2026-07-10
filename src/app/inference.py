@@ -380,13 +380,17 @@ def predict(
         npz_gno_input,
         npz_pos,
     )
+    from utils.mesh import build_c_mesh_nodes
     from utils.scenario import build_scenario
 
     torch_device = torch.device(device_str)
 
     # 1. Build the in-memory scenario (C-mesh + bbox crop + SDF + freestream
-    #    features), same pipeline the notebooks use.
-    scenario = build_scenario(naca, reynolds, aoa_deg, device=None)
+    #    features), same pipeline the notebooks use. The raw C-mesh is built
+    #    once here and shared with both the scenario and the Cl/Cd wall patch
+    #    below, so the (brentq-heavy) mesh generation is not paid twice.
+    mesh = build_c_mesh_nodes(naca, aoa_deg=aoa_deg)
+    scenario = build_scenario(naca, reynolds, aoa_deg, device=None, mesh=mesh)
 
     # 2. Extract tensors for the model (both on CPU)
     pos = npz_pos(scenario)       # (N, 2) — CPU tensor
@@ -435,8 +439,8 @@ def predict(
             compute_coefficients,
         )
 
-        n_cells, wall_patch = build_airfoil_wall_patch(naca, aoa_deg)
-        result["coeffs"] = compute_coefficients(
+        n_cells, wall_patch = build_airfoil_wall_patch(naca, aoa_deg, mesh=mesh)
+        coeffs = compute_coefficients(
             n_cells,
             wall_patch,
             scenario["mesh_indices"],
@@ -446,6 +450,15 @@ def predict(
             aoa_deg=aoa_deg,
             reynolds=reynolds,
         )
+        # A non-finite coefficient (e.g. an OOD surrogate output NaN reaching a
+        # wall cell) would serialize to invalid JSON — Starlette renders with
+        # allow_nan=False and raises at response time, OUTSIDE this guard,
+        # returning HTTP 500 and sinking the whole prediction. Drop to None so
+        # the field still renders and the card just shows "—".
+        if coeffs is not None and not all(math.isfinite(x) for x in coeffs.values()):
+            logger.warning("Non-finite Cl/Cd for naca=%s aoa=%s: %s", naca, aoa_deg, coeffs)
+            coeffs = None
+        result["coeffs"] = coeffs
     except Exception:
         logger.exception("Cl/Cd computation failed for naca=%s aoa=%s", naca, aoa_deg)
         result["coeffs"] = None
