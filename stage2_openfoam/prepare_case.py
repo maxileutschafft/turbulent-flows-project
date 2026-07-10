@@ -33,7 +33,7 @@ def main():
     mesh_to_foam.dump_full_mesh(args.naca, args.aoa, case / "mesh.h5")
     s = mesh_to_foam.convert(str(case / "mesh.h5"), str(case / "mesh.msh"), dz=args.dz)
     print(f"mesh: cells={s['cells']} airfoil={s['airfoil']} farfield={s['farfield']}")
-    make_case.write_case(case, args.naca, args.re, args.aoa, args.end_time)
+    make_case.write_case(case, args.naca, args.re, args.aoa, args.end_time, dz=args.dz)
     for helper in ("set_patch_types.py", "warmstart.py", "Allrun", "Allrun.warmstart"):
         shutil.copy(HERE / helper, case / helper)
     (case / "Allrun").chmod(0o755)
