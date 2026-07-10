@@ -30,6 +30,7 @@ def build_scenario(
     bbox: tuple[tuple[float, float], tuple[float, float]] = ((-1.5, 3.5), (-1.5, 1.5)),
     save_mesh_to: Path | None = None,
     device: DeviceLike = None,
+    mesh: tuple[np.ndarray, int, int] | None = None,
 ) -> dict[str, np.ndarray]:
     """Generate a scenario dict for GNO inference.
 
@@ -50,6 +51,11 @@ def build_scenario(
         If a CUDA device, the SDF is computed on-GPU via
         `analytical_naca4_sdf_torch(device=device)`; otherwise the
         vectorised CPU `analytical_naca4_sdf` is used.
+    mesh : (nodes, n_airfoil, n_wake) or None
+        Pre-built C-mesh from `build_c_mesh_nodes`. When given, it is used as
+        is instead of rebuilding — lets a caller that also needs the raw mesh
+        (e.g. the Cl/Cd wall patch) build it once and share it. When None the
+        mesh is built here.
 
     Returns
     -------
@@ -60,7 +66,9 @@ def build_scenario(
         is_wall                       bool    [N]
     """
     # --- 1. Build C-mesh nodes ------------------------------------------------
-    nodes, n_airfoil, n_wake = build_c_mesh_nodes(naca_code, aoa_deg=angle_of_attack)
+    if mesh is None:
+        mesh = build_c_mesh_nodes(naca_code, aoa_deg=angle_of_attack)
+    nodes, n_airfoil, n_wake = mesh
     ni, nj, _ = nodes.shape
     ni_c, nj_c = ni - 1, nj - 1
 
@@ -97,6 +105,11 @@ def build_scenario(
     )
     centers_cropped = centers_flat[keep]               # [N, 2]
     is_wall = is_wall_full[keep]
+    # Full-mesh cell index of each kept (cropped) cell, in the same raster
+    # order (i*(nj-1)+j) as the C-mesh. Lets downstream code map the cropped
+    # prediction rows back onto the full mesh — e.g. the airfoil-wall patch
+    # used for the Cl/Cd surface integral (`surrogate.coefficients`).
+    mesh_indices = np.flatnonzero(keep).astype(np.int64)
 
     # --- 6. SDF from airfoil surface (analytical, matches training) ---------
     # The training dataset's `sdf` was computed analytically against the
@@ -141,6 +154,7 @@ def build_scenario(
         "angle_of_attack": np.float32(angle_of_attack),
         "naca_code":       np.array(naca_code),
         "is_wall":         is_wall.astype(bool),
+        "mesh_indices":    mesh_indices,
     }
 
     # --- 8. Optional mesh dump (for downstream visualisation/debugging) -------

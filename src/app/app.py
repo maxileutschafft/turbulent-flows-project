@@ -335,6 +335,7 @@ def api_predict(
         "device": resolved_device,
         "field_svg": field_svg,
         "colorbar": colorbar,
+        "coeffs": result.get("coeffs"),
         "compute_ms": compute_ms,
     }
     _RESPONSE_CACHE[cache_key] = response
