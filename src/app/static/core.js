@@ -77,9 +77,17 @@ export function applyColorbar(cb){
   el.designCB.classList.add('show');
 }
 
+// ---- aerodynamic coefficients card ----
+export function setCoeffs(c){
+  if(!c){ el.coeffEls[0].textContent='—'; el.coeffEls[1].textContent='—'; el.coeffEls[2].textContent='—'; return; }
+  el.coeffEls[0].textContent = c.cl.toFixed(3);
+  el.coeffEls[1].textContent = c.cd.toFixed(4);
+  el.coeffEls[2].textContent = c.ld.toFixed(1);
+}
+
 export function clearPrediction(){
   predictionActive = false; designFieldSvg = null; designColorbar = null; streamlineAoa = null;
-  fieldCache = {}; applyColorbar(null); renderDesignGeom();
+  fieldCache = {}; applyColorbar(null); setCoeffs(null); renderDesignGeom();
 }
 
 export function showView(view){
@@ -157,6 +165,7 @@ export function generatePrediction(){
       // assign field svg AFTER syncing slider so updAoa guard doesn't wipe it
       designFieldSvg = data.field_svg; designColorbar = data.colorbar; streamlineAoa = gotAoa;
       applyColorbar(data.colorbar);
+      setCoeffs(data.coeffs);
       renderDesignGeom();
       toast('Prediction · ' + data.compute_ms + ' ms');
     })

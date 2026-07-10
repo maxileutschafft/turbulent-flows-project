@@ -97,6 +97,11 @@ def build_scenario(
     )
     centers_cropped = centers_flat[keep]               # [N, 2]
     is_wall = is_wall_full[keep]
+    # Full-mesh cell index of each kept (cropped) cell, in the same raster
+    # order (i*(nj-1)+j) as the C-mesh. Lets downstream code map the cropped
+    # prediction rows back onto the full mesh — e.g. the airfoil-wall patch
+    # used for the Cl/Cd surface integral (`surrogate.coefficients`).
+    mesh_indices = np.flatnonzero(keep).astype(np.int64)
 
     # --- 6. SDF from airfoil surface (analytical, matches training) ---------
     # The training dataset's `sdf` was computed analytically against the
@@ -141,6 +146,7 @@ def build_scenario(
         "angle_of_attack": np.float32(angle_of_attack),
         "naca_code":       np.array(naca_code),
         "is_wall":         is_wall.astype(bool),
+        "mesh_indices":    mesh_indices,
     }
 
     # --- 8. Optional mesh dump (for downstream visualisation/debugging) -------

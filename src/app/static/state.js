@@ -34,4 +34,6 @@ export function cacheDom(){
   el.genBtn = id('genBtn');
   el.vizDD = id('vizDD');
   el.exportStepBtn = id('exportStepBtn');
+  el.aeroCard = id('aeroCard');
+  el.coeffEls = document.querySelectorAll('#aeroCard .metric .m-v');  // the Aerodynamics card
 }

@@ -424,6 +424,32 @@ def predict(
         "nut":   pred[:, 5],
     }
 
+    # Aerodynamic force coefficients (Cl/Cd/L-over-D) from the exact
+    # airfoil-wall boundary of the same C-mesh — the wall-patch cell indices
+    # line up with the cropped prediction via scenario["mesh_indices"]. If this
+    # fails for any reason it must not sink the whole prediction, so coeffs is
+    # left None and the UI simply shows "—".
+    try:
+        from surrogate.coefficients import (
+            build_airfoil_wall_patch,
+            compute_coefficients,
+        )
+
+        n_cells, wall_patch = build_airfoil_wall_patch(naca, aoa_deg)
+        result["coeffs"] = compute_coefficients(
+            n_cells,
+            wall_patch,
+            scenario["mesh_indices"],
+            result["u"],
+            result["v"],
+            result["p"],
+            aoa_deg=aoa_deg,
+            reynolds=reynolds,
+        )
+    except Exception:
+        logger.exception("Cl/Cd computation failed for naca=%s aoa=%s", naca, aoa_deg)
+        result["coeffs"] = None
+
     _CACHE[cache_key] = result
     _CACHE.move_to_end(cache_key)
     while len(_CACHE) > _CACHE_MAXSIZE:
