@@ -33,7 +33,7 @@ def turbulence_inlet(u_mag, intensity=0.008, length=0.08):
 
 
 def write_case(case: Path, naca: str, reynolds: float, aoa_deg: float,
-               end_time: int = 3000, intensity: float = 0.05):
+               end_time: int = 3000, intensity: float = 0.008, dz: float = 0.1):
     u_mag = reynolds * NU / CHORD
     a = math.radians(aoa_deg)
     ux, uy = u_mag * math.cos(a), u_mag * math.sin(a)
@@ -117,7 +117,7 @@ functions
         pitchAxis       (0 0 1);
         magUInf         {u_mag:.6g};
         lRef            {CHORD};
-        Aref            {CHORD};
+        Aref            {CHORD * dz:.6g};
     }}
 }}
 """)
