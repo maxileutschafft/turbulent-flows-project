@@ -110,6 +110,17 @@ def dump_full_mesh(naca: str, aoa_deg: float, out_h5) -> dict:
     ii, jj = ii.ravel(), jj.ravel()
     conn = np.column_stack([ii * nj + jj, (ii + 1) * nj + jj,
                             (ii + 1) * nj + (jj + 1), ii * nj + (jj + 1)])
+    # merge coincident nodes: the C-mesh wake cut has duplicate nodes, which would
+    # otherwise become a freestream slit behind the airfoil and kill circulation/lift.
+    _, idx, inv = np.unique(np.round(pts, 8), axis=0, return_index=True, return_inverse=True)
+    pts = pts[idx]
+    conn = inv[conn].astype(np.int64)
+    # orient quads counter-clockwise so the extruded hexes have positive volume.
+    q = pts[conn]
+    x, y = q[:, :, 0], q[:, :, 1]
+    area = 0.5 * (x[:, 0] * (y[:, 1] - y[:, 3]) + x[:, 1] * (y[:, 2] - y[:, 0])
+                  + x[:, 2] * (y[:, 3] - y[:, 1]) + x[:, 3] * (y[:, 0] - y[:, 2]))
+    conn[area < 0] = conn[area < 0][:, ::-1]
     with h5py.File(out_h5, "w") as f:
         f.create_dataset("points", data=pts)
         f.create_dataset("connectivity", data=conn)
