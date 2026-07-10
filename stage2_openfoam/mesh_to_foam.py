@@ -92,6 +92,31 @@ def convert(mesh_h5: str, out: str, dz: float = 0.1, wall_tol: float = 0.02) -> 
     return stats
 
 
+
+def dump_full_mesh(naca: str, aoa_deg: float, out_h5) -> dict:
+    """Build the FULL (uncropped) C-mesh and dump it to HDF5.
+
+    build_scenario's save_mesh_to writes the ML-CROPPED near-field (bbox +-1.5c),
+    whose far-field is far too close for CFD (it suppresses the circulation ->
+    near-zero lift). For a correct ground-truth run we convert the full C-mesh
+    (far-field ~20c). The wake region is interior (single-block C-grid), so no
+    branch-cut matching is needed.
+    """
+    from utils.mesh import build_c_mesh_nodes
+    nodes, _, _ = build_c_mesh_nodes(naca, aoa_deg=float(aoa_deg))
+    ni, nj, _ = nodes.shape
+    pts = nodes.reshape(-1, 2)
+    ii, jj = np.meshgrid(np.arange(ni - 1), np.arange(nj - 1), indexing="ij")
+    ii, jj = ii.ravel(), jj.ravel()
+    conn = np.column_stack([ii * nj + jj, (ii + 1) * nj + jj,
+                            (ii + 1) * nj + (jj + 1), ii * nj + (jj + 1)])
+    with h5py.File(out_h5, "w") as f:
+        f.create_dataset("points", data=pts)
+        f.create_dataset("connectivity", data=conn)
+        f.attrs["naca_code"] = naca
+    return dict(ni=int(ni), nj=int(nj), cells=int((ni - 1) * (nj - 1)))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("mesh_h5")

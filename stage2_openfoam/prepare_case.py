@@ -30,7 +30,7 @@ def main():
     case = Path(args.case)
     case.mkdir(parents=True, exist_ok=True)
 
-    build_scenario(args.naca, args.re, args.aoa, save_mesh_to=case / "mesh.h5")
+    mesh_to_foam.dump_full_mesh(args.naca, args.aoa, case / "mesh.h5")
     s = mesh_to_foam.convert(str(case / "mesh.h5"), str(case / "mesh.msh"), dz=args.dz)
     print(f"mesh: cells={s['cells']} airfoil={s['airfoil']} farfield={s['farfield']}")
     make_case.write_case(case, args.naca, args.re, args.aoa, args.end_time)
