@@ -14,11 +14,11 @@ solvers
 }
 SIMPLE
 {
-    nNonOrthogonalCorrectors 1;
+    nNonOrthogonalCorrectors 2;
     consistent      yes;
     residualControl { p 1e-5; U 1e-6; "(k|omega)" 1e-6; }
 }
 relaxationFactors
 {
-    equations { U 0.9; "(k|omega)" 0.7; }
+    equations { U 0.7; "(k|omega)" 0.5; }
 }

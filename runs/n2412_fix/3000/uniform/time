@@ -12,35 +12,21 @@ FoamFile
 {
     version     2.0;
     format      ascii;
-    class       polyBoundaryMesh;
-    location    "constant/polyMesh";
-    object      boundary;
+    class       dictionary;
+    location    "3000/uniform";
+    object      time;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
-3
-(
-    airfoil
-    {
-        type            wall;
-        physicalType    patch;
-        nFaces          240;
-        startFace       114241;
-    }
-    farfield
-    {
-        type            patch;
-        physicalType    patch;
-        nFaces          718;
-        startFace       114481;
-    }
-    frontAndBack
-    {
-        type            empty;
-        physicalType    patch;
-        nFaces          114720;
-        startFace       115199;
-    }
-)
+value           3000;
+
+name            "3000";
+
+index           3000;
+
+deltaT          1;
+
+deltaT0         1;
+
 
 // ************************************************************************* //
