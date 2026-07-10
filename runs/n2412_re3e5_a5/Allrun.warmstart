@@ -1,0 +1,11 @@
+#!/bin/sh
+# Warm-started run.  Usage: ./Allrun.warmstart pred.npz
+# Assumes the mesh already exists (run ./Allrun once, or gmshToFoam below).
+cd "${0%/*}" || exit 1
+NPZ="${1:-pred.npz}"
+[ -d constant/polyMesh ] || { gmshToFoam mesh.msh > log.gmshToFoam 2>&1; python3 set_patch_types.py .; renumberMesh -overwrite > log.renumberMesh 2>&1; }
+postProcess -func writeCellCentres -time 0 > log.writeCellCentres 2>&1
+python3 warmstart.py --case . --npz "$NPZ"          # overwrite 0/ with the GNO fields
+potentialFoam -writep                     > log.potentialFoam 2>&1   # make U divergence-free
+simpleFoam                                2>&1 | tee log.simpleFoam.warmstart
+echo "done. compare: python3 ../compare_residuals.py --freestream log.simpleFoam --warmstart log.simpleFoam.warmstart"
