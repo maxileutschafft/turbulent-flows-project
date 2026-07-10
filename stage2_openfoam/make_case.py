@@ -25,7 +25,7 @@ def _head(cls, obj, loc):
             f'    location "{loc}";\n    object {obj};\n}}\n')
 
 
-def turbulence_inlet(u_mag, intensity=0.05, length=0.07):
+def turbulence_inlet(u_mag, intensity=0.008, length=0.08):
     k = 1.5 * (intensity * u_mag) ** 2
     omega = math.sqrt(k) / (0.09 ** 0.25 * length * CHORD)
     nut = k / omega
@@ -124,18 +124,22 @@ functions
     (case / "system/fvSchemes").write_text(
         _head("dictionary", "fvSchemes", "system") + """
 ddtSchemes      { default steadyState; }
-gradSchemes     { default Gauss linear; }
+gradSchemes
+{
+    default         cellLimited Gauss linear 1;
+    grad(U)         cellLimited Gauss linear 1;
+}
 divSchemes
 {
     default             none;
-    div(phi,U)          bounded Gauss linearUpwind grad(U);
+    div(phi,U)          bounded Gauss linearUpwindV grad(U);
     div(phi,k)          bounded Gauss upwind;
     div(phi,omega)      bounded Gauss upwind;
     div((nuEff*dev2(T(grad(U))))) Gauss linear;
 }
-laplacianSchemes { default Gauss linear corrected; }
+laplacianSchemes { default Gauss linear limited corrected 0.33; }
 interpolationSchemes { default linear; }
-snGradSchemes   { default corrected; }
+snGradSchemes   { default limited corrected 0.33; }
 wallDist        { method meshWave; }
 """)
     (case / "system/fvSolution").write_text(
@@ -147,13 +151,13 @@ solvers
 }
 SIMPLE
 {
-    nNonOrthogonalCorrectors 1;
+    nNonOrthogonalCorrectors 2;
     consistent      yes;
     residualControl { p 1e-5; U 1e-6; "(k|omega)" 1e-6; }
 }
 relaxationFactors
 {
-    equations { U 0.9; "(k|omega)" 0.7; }
+    equations { U 0.7; "(k|omega)" 0.5; }
 }
 """)
     (case / "system/decomposeParDict").write_text(
